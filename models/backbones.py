@@ -1,23 +1,29 @@
-from torchvision.models import (
-    resnet18, 
-    resnet34, 
-    resnet50, 
-    resnet101, 
-    resnet152
-)
-from torchvision.models import (
-    efficientnet_b0,
-    efficientnet_b1,
-    efficientnet_b2,
-    efficientnet_b3,
-    efficientnet_b4,
-    efficientnet_b5,
-    efficientnet_b6,
-    efficientnet_b7
-)
-from torchvision.models import (
-    mobilenet_v2, 
-    mobilenet_v3_small,
-    mobilenet_v3_large
-)
+from torchvision import models
+from torch import nn
 
+class ResNet(nn.Module):
+    def __init__(self, model_name: str, *args, **kwargs) -> None:
+        super(ResNet, self).__init__()
+        self.model = models.resnet.__dict__[model_name](*args, **kwargs)
+        self.model.fc = nn.Identity()
+        
+    def forward(self, x):
+        return self.model(x)
+
+class EfficientNet(nn.Module):
+    def __init__(self, model_name: str, *args, **kwargs) -> None:
+        super(EfficientNet, self).__init__()
+        self.model = models.efficientnet.__dict__[model_name](*args, **kwargs)
+        self.model.classifier = nn.Identity()
+    
+    def forward(self, x):
+        return self.model(x)
+        
+class MobileNet(nn.Module):
+    def __init__(self, model_name: str, *args, **kwargs) -> None:
+        super(MobileNet, self).__init__()
+        self.model = models.mobilenet.__dict__[model_name](*args, **kwargs)
+        self.model.classifier = nn.Identity()
+    
+    def forward(self, x):
+        return self.model(x)
