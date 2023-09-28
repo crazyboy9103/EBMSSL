@@ -9,13 +9,13 @@ class BaseDataset(Dataset):
         data_path: str, 
         transform: Callable[[Any], Any] = None, 
         target_transform: Callable[[Any], Any] = None,
+        **kwargs
     ):
-        self.data = self.load_from_path(data_path)
+        self.data = self.load_from_path(data_path, **kwargs)
         self.transform = transform
         self.target_transform = target_transform
     
-    def load_from_path(self, data_path: str):
-        # return torch.load(data_path)
+    def load_from_path(self, data_path: str, **kwargs):
         raise NotImplementedError
         
     def __len__(self):
