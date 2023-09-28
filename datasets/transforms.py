@@ -78,3 +78,29 @@ class RandomMask(nn.Module):
 
         masked_image = x * mask
         return masked_image
+    
+class SuperResolution(nn.Module):
+    def __init__(self, scale_factor: int):
+        super(SuperResolution, self).__init__()
+        self.scale_factor = scale_factor
+
+    def forward(self, x):
+        _, _, height, width = x.size()
+        assert height % self.scale_factor == 0 and width % self.scale_factor == 0, "Height and width must be divisible by scale_factor."
+        down_sampled = F.interpolate(
+            x, size = (height // self.scale_factor, width // self.scale_factor), mode='bicubic'
+        )
+        up_sampled = F.interpolate(
+            down_sampled, size = (height, width), mode='nearest'
+        )
+        return up_sampled
+
+class Noise(nn.Module):
+    def __init__(self):
+        super(Noise, self).__init__()
+
+    def forward(self, x):
+        _, _, height, width = x.size()
+        gamma = torch.rand((1,), device=x.device)
+        epsilon = torch.rand((height, width), device=x.device)
+        return torch.sqrt(gamma) * x + torch.sqrt(1-gamma) * epsilon
