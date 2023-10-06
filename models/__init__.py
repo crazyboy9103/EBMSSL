@@ -1,2 +1,1 @@
-from .backbones import *
-from .heads import *
+from .wrapper import ModelWrapper

@@ -1,20 +1,15 @@
 import random
 
-from torchvision.transforms import (
-    Resize, 
-    RandomCrop,
-)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class GriddedRandomMask(nn.Module):
+class GriddedRandomMask:
     def __init__(self, mask_size, mask_ratio):
-        super(GriddedRandomMask, self).__init__()
         self.mask_size = mask_size
         self.mask_ratio = mask_ratio
 
-    def forward(self, x, batch_wise=False):
+    def __call__(self, x, batch_wise=False):
         batch_size, _, height, width = x.size()
         
         assert height % self.mask_size == 0 and width % self.mask_size == 0, "Height and width must be divisible by mask_size."
@@ -49,13 +44,12 @@ class GriddedRandomMask(nn.Module):
 
         return masked_image
     
-class RandomMask(nn.Module):
+class RandomMask:
     def __init__(self, mask_size, mask_ratio):
-        super(RandomMask, self).__init__()
         self.mask_size = mask_size
         self.mask_ratio = mask_ratio
 
-    def forward(self, x, batch_wise=False):
+    def __call__(self, x, batch_wise=False):
         batch_size, _, height, width = x.size()
         num_masks = int(height * width * self.mask_ratio / (self.mask_size ** 2))
 
@@ -79,12 +73,11 @@ class RandomMask(nn.Module):
         masked_image = x * mask
         return masked_image
     
-class SuperResolution(nn.Module):
+class SuperResolution:
     def __init__(self, scale_factor: int):
-        super(SuperResolution, self).__init__()
         self.scale_factor = scale_factor
 
-    def forward(self, x):
+    def __call__(self, x):
         _, _, height, width = x.size()
         assert height % self.scale_factor == 0 and width % self.scale_factor == 0, "Height and width must be divisible by scale_factor."
         down_sampled = F.interpolate(
@@ -95,12 +88,17 @@ class SuperResolution(nn.Module):
         )
         return up_sampled
 
-class Noise(nn.Module):
+class Noise:
     def __init__(self):
-        super(Noise, self).__init__()
-
-    def forward(self, x):
-        _, _, height, width = x.size()
-        gamma = torch.rand((1,), device=x.device)
-        epsilon = torch.rand((height, width), device=x.device)
+        pass
+    
+    def __call__(self, x, batch_wise=False):
+        batch_size, _, height, width = x.size()
+        if batch_wise:
+            gamma = torch.rand((1,), device=x.device)
+            epsilon = torch.rand((height, width), device=x.device)
+            return torch.sqrt(gamma) * x + torch.sqrt(1-gamma) * epsilon
+        
+        gamma = torch.rand((batch_size, 1, 1, 1), device=x.device)
+        epsilon = torch.rand((batch_size, 1, height, width), device=x.device)
         return torch.sqrt(gamma) * x + torch.sqrt(1-gamma) * epsilon

@@ -1,7 +1,9 @@
 *.pt
+*.tar.gz
 .python-version
 
 __pycache__/
 .ipynb_checkpoints/
-
-ebmssl
+checkpoints/
+lightning_logs/
+wandb/

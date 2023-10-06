@@ -1,1 +1,1 @@
-from .imagenet import ImageNet
+from .wrapper import DatasetWrapper
