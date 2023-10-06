@@ -41,10 +41,10 @@ def cli_main():
     parser.add_argument('--dataset', type=str, default="imagenet")
     parser.add_argument('--data_root', type=str, default="/mnt/d/datasets")
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=16)
     parser.add_argument('--num_gpus', type=int, default=1)
     # Model
-    parser.add_argument('--backbone', type=str, default="resnet18")
+    parser.add_argument('--backbone', type=str, default="resnet50")
     parser.add_argument('--from_ckpt', type=str, default="")
     parser.add_argument('--pretrained', type=str2bool, default=False)
     
@@ -63,7 +63,7 @@ def cli_main():
     
     
     # Optimizer
-    parser.add_argument('--optimizer', type=str, default="Adam", choices=["Adam", "SGD", "AdamW"])
+    parser.add_argument('--optimizer', type=str, default="AdamW", choices=["Adam", "SGD", "AdamW"])
     parser.add_argument('--ssl_lr', type=float, default=0.0001) # SSL learning rate
     parser.add_argument('--sl_lr', type=float, default=0.001) # Linear probe/Finetune learning rate
     
@@ -73,7 +73,7 @@ def cli_main():
     
     # Trainer
     parser.add_argument('--max_epochs', type=int, default=100)
-    parser.add_argument('--precision', type=int, default=32)
+    parser.add_argument('--precision', type=str, default='16-mixed')
     parser.add_argument('--accelerator', type=str, default="gpu")
     parser.add_argument('--wandb', action='store_true')
     parser.add_argument('--gpus', type=int, default=1)
@@ -123,15 +123,14 @@ def cli_main():
 
     data_loader_kwargs = dict(
         batch_size=args.batch_size,
-        shuffle=True, 
         num_workers=args.num_workers,
         pin_memory=True, 
         generator=torch.Generator().manual_seed(args.seed)
     )
         
-    train_loader = DataLoader(train_dataset, **data_loader_kwargs)
-    val_loader = DataLoader(test_dataset, **data_loader_kwargs)
-    finetune_loader = DataLoader(finetune_dataset, **data_loader_kwargs)
+    train_loader = DataLoader(train_dataset, shuffle=True, **data_loader_kwargs)
+    val_loader = DataLoader(test_dataset, shuffle=False, **data_loader_kwargs)
+    finetune_loader = DataLoader(finetune_dataset, shuffle=False, **data_loader_kwargs)
     
 
     # ------------
@@ -213,10 +212,5 @@ def cli_main():
         
         trainer.fit(finetune_task, finetune_loader, val_loader)
         
-    
-    # ------------
-    # testing
-    # ------------
-    
 if __name__ == '__main__':
     cli_main()

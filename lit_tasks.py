@@ -15,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
+from utils.scheduler import LinearWarmUpMultiStepDecay, CosineAnnealingWarmUpDecay
 class EBMBaseTask(pl.LightningModule):
     def __init__(
         self, 
@@ -57,7 +58,7 @@ class EBMBaseTask(pl.LightningModule):
             corrupted_images.requires_grad_(True)
             # stop gradients between inner-loop steps.
             energy_score = self.model(corrupted_images, return_energy=True)
-
+    
             # energy score with shape [n, 1]
             im_grad = autograd.grad(energy_score.sum(), corrupted_images)[0]
             
@@ -151,14 +152,17 @@ class EBMSSLTask(EBMBaseTask):
             
     
     def training_step(self, batch, batch_idx):
+        if self.model.alpha < 0:
+            self.model.alpha.data.fill_(0.0001)
+            
         rec_loss, rec_images = self.reconstruct(batch)
         
         if batch_idx == 0:
-            for idx, image in enumerate(rec_images):
-                pil_image = to_pil_image(image.detach().cpu())
-                orig_image = to_pil_image(batch[0][idx].detach().cpu())
+            for rec_image, orig_image in zip(rec_images, batch[0]):
+                rec_image = to_pil_image(rec_image.detach().cpu())
+                orig_image = to_pil_image(orig_image.detach().cpu())
                 self.logger.experiment.log({
-                    "reconstruction": wandb.Image(pil_image), 
+                    "reconstruction": wandb.Image(rec_image), 
                     "original": wandb.Image(orig_image)
                 })
         
@@ -167,7 +171,13 @@ class EBMSSLTask(EBMBaseTask):
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.model.parameters(), lr=self.lr)
-        return optimizer
+        # following milestones, warmup_iters are arbitrarily chosen
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0.00001)
+        scheduler = {
+            "scheduler": scheduler,
+            "interval": "step",
+        }
+        return [optimizer], [scheduler]
     
 class EBMLinearProbeTask(EBMBaseTask):
     def __init__(self, model: nn.Module, transform: Callable[[Tensor], Tensor] = lambda x: x, num_steps: int = 2, optimizer: Type = optim.Adam, base_lr: float = 0.001):
@@ -220,15 +230,6 @@ class EBMFineTuneTask(EBMBaseTask):
         optimizer = self.optimizer(tuple(self.model.backbone.parameters()) + tuple(self.model.linear_head.parameters()), lr=self.lr)
         return optimizer
         
-        #  # following milestones, warmup_iters are arbitrarily chosen
-        # first, second = self.steps_per_epoch * int(self.total_epochs * 4/6), self.steps_per_epoch * int(self.total_epochs * 5/6)
-        # warmup_iters = self.steps_per_epoch * int(self.total_epochs * 1/6)
-        # scheduler = LinearWarmUpMultiStepDecay(optimizer, milestones=[first, second], gamma=1/3, warmup_iters=warmup_iters)
-        # scheduler_config = {
-        #     "scheduler": scheduler,
-        #     "interval": "step",
-        # }
-        # return [optimizer], [scheduler_config]
 
     def on_validation_epoch_end(self):
         metrics = self.metrics()
