@@ -1,14 +1,15 @@
 from typing import Callable, Type
 
 import wandb
-from torch.nn import functional as F
+import torch
 from torch import optim
 from torch import nn
 from torch import Tensor
 from torch import autograd
-import pytorch_lightning as pl
+from torch.nn import functional as F
 from torchvision.transforms.functional import to_pil_image
 import torchmetrics
+import pytorch_lightning as pl
 import umap
 import matplotlib
 matplotlib.use('Agg')
@@ -52,19 +53,19 @@ class EBMBaseTask(pl.LightningModule):
     def reconstruct(self, batch, beta=1.0):
         images, _ = batch
         corrupted_images = self.transform(images)
+        
         loss = 0
         for _ in range(self.num_steps):
-            corrupted_images = corrupted_images.detach()
             corrupted_images.requires_grad_(True)
             # stop gradients between inner-loop steps.
             energy_score = self.model(corrupted_images, return_energy=True)
-    
             # energy score with shape [n, 1]
-            im_grad = autograd.grad(energy_score.sum(), corrupted_images)[0]
-            
+            im_grad = autograd.grad([energy_score.sum()], [corrupted_images], create_graph=True)[0]
             # compute the gradient of input pixels along the direction
             # of energy maximization
             corrupted_images = corrupted_images - self.model.alpha * im_grad
+            # corrupted_images = corrupted_images.detach()
+            corrupted_images = torch.clamp(corrupted_images, 0, 1)
             # gradient descent along the direction of energy minimization
             loss += F.smooth_l1_loss(corrupted_images, images, beta=beta)
             
@@ -112,8 +113,6 @@ class EBMSSLTask(EBMBaseTask):
         super().__init__(model, transform, num_steps, optimizer, base_lr)
         
     def validation_step(self, batch, batch_idx):
-        # rec_loss, _ = self.reconstruct(batch)
-        # ce_loss, logits = self.logits(batch)
         features = self.features(batch)
         
         y = batch[1]
@@ -153,7 +152,7 @@ class EBMSSLTask(EBMBaseTask):
     
     def training_step(self, batch, batch_idx):
         if self.model.alpha < 0:
-            self.model.alpha.data.fill_(0.0001)
+            self.model.alpha.data.fill_(0.00001)
             
         rec_loss, rec_images = self.reconstruct(batch)
         
@@ -172,9 +171,8 @@ class EBMSSLTask(EBMBaseTask):
     def configure_optimizers(self):
         optimizer = self.optimizer(self.model.parameters(), lr=self.lr)
         # following milestones, warmup_iters are arbitrarily chosen
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0.00001)
         scheduler = {
-            "scheduler": scheduler,
+            "scheduler": optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=0.00001),
             "interval": "step",
         }
         return [optimizer], [scheduler]

@@ -11,6 +11,7 @@ class DatasetWrapper:
         self,
         dataset: str,
         data_root: str = ".",
+        seed: int = 2023
     ):
         super(DatasetWrapper, self).__init__()
         data = {k.lower(): v for k, v in datasets.__dict__.items()}[dataset]
@@ -44,7 +45,7 @@ class DatasetWrapper:
             finetune_data_len = int(train_data_len * 0.1)
             train_data_len = train_data_len - finetune_data_len
             
-            self.train_data, self.finetune_data = random_split(train_data, [train_data_len, finetune_data_len], generator=torch.Generator().manual_seed(2023))
+            self.train_data, self.finetune_data = random_split(train_data, [train_data_len, finetune_data_len], generator=torch.Generator().manual_seed(seed))
             self.test_data = data(root = data_root, train = False, transform = image_transform, download = True)
             
         elif dataset == "imagenet":
@@ -65,7 +66,7 @@ class DatasetWrapper:
             finetune_data_len = int(train_data_len * 0.1)
             train_data_len = train_data_len - finetune_data_len
             
-            self.train_data, self.finetune_data = random_split(train_data, [train_data_len, finetune_data_len], generator=torch.Generator().manual_seed(2023))
+            self.train_data, self.finetune_data = random_split(train_data, [train_data_len, finetune_data_len], generator=torch.Generator().manual_seed(seed))
             self.test_data = data(root = os.path.join(data_root, "val"), split = 'val', transform = test_image_transform)
             
            
