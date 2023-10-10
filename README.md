@@ -37,3 +37,9 @@ for images in image_loader:
 | mixup (Zhang et al., 2018) | - | 0.8 |
 
 ![Cosine decay with warmup](./cosine_decay_warmup.png)
+
+# Docker
+```bash
+docker build -t <image_name> .
+docker run -it --gpus all --name <container_name> -v <host_dataset_dir>:/datasets --gpus all --network host --ipc host <image_name>
+```

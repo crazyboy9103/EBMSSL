@@ -30,5 +30,5 @@ RUN wget https://bootstrap.pypa.io/get-pip.py \
 WORKDIR /workspace
 COPY . /workspace
 
-RUN pip install --upgrade pip 
-# && \  pip install -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
