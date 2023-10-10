@@ -56,18 +56,19 @@ class EBMBaseTask(pl.LightningModule):
         
         loss = 0
         for _ in range(self.num_steps):
-            corrupted_images.requires_grad_(True)
-            # stop gradients between inner-loop steps.
+            corrupted_images.requires_grad_(True)   
+            
             energy_score = self.model(corrupted_images, return_energy=True)
             # energy score with shape [n, 1]
             im_grad = autograd.grad([energy_score.sum()], [corrupted_images], create_graph=True)[0]
             # compute the gradient of input pixels along the direction
             # of energy maximization
             corrupted_images = corrupted_images - self.model.alpha * im_grad
-            # corrupted_images = corrupted_images.detach()
             corrupted_images = torch.clamp(corrupted_images, 0, 1)
             # gradient descent along the direction of energy minimization
             loss += F.smooth_l1_loss(corrupted_images, images, beta=beta)
+            # stop gradients between inner-loop steps.
+            corrupted_images = corrupted_images.detach()
             
         return loss, corrupted_images
     

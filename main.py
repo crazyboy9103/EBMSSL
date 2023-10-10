@@ -10,7 +10,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
-
 from models import ModelWrapper
 from datasets import DatasetWrapper
 from datasets.transforms import (
@@ -56,11 +55,13 @@ def cli_main():
     parser.add_argument('--scale_factor', type=int, default=2)
     parser.add_argument('--ssl_epochs', type=int, default=100)
     parser.add_argument('--ssl_lr', type=float, default=0.0001) # SSL learning rate
+    parser.add_argument('--ssl_acc_batches', type=int, default=8) # Accumulate batches for SSL
     
     # Linear Probe & Fine-tune Task
     parser.add_argument('--num_classes', type=int, default=10)
     parser.add_argument('--sl_epochs', type=int, default=100)
     parser.add_argument('--sl_lr', type=float, default=0.001) # Linear probe/Finetune learning rate
+    parser.add_argument('--sl_acc_batches', type=int, default=1) # Accumulate batches for linear probe/finetune
     
     # Optimizer
     parser.add_argument('--optimizer', type=str, default="AdamW", choices=["Adam", "SGD", "AdamW"])
@@ -71,16 +72,13 @@ def cli_main():
     parser.add_argument('--wandb', action='store_true')
     parser.add_argument('--devices', type=int, default=1)
     parser.add_argument('--task', type=str, default="ssl", choices=["ssl", "ssl+linear", "ssl+finetune", "linear", "finetune"])
-    
+
     # Misc
     parser.add_argument('--seed', type=int, default=2023)
     
     args = parser.parse_args()
 
     pl.seed_everything(args.seed)
-    
-    
-    
     
     # ------------
     # data
@@ -185,6 +183,7 @@ def cli_main():
         
         trainer = pl.Trainer(
             max_epochs=args.ssl_epochs,
+            accumulate_grad_batches=args.ssl_acc_batches,
             **trainer_kwargs
         )
         
@@ -199,6 +198,7 @@ def cli_main():
         
         trainer = pl.Trainer(
             max_epochs=args.sl_epochs,
+            accumulate_grad_batches=args.sl_acc_batches,
             **trainer_kwargs
         )
         
@@ -213,6 +213,7 @@ def cli_main():
         
         trainer = pl.Trainer(
             max_epochs=args.sl_epochs,
+            accumulate_grad_batches=args.sl_acc_batches,
             **trainer_kwargs
         )
         
